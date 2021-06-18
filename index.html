@@ -1,0 +1,227 @@
+<html ng-app="app">
+<head>
+<title>
+</title>
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.7/angular.min.js"></script>
+
+<script src="https://code.highcharts.com/highcharts.js"></script>
+<script src="https://code.highcharts.com/modules/series-label.js"></script>
+<script src="https://code.highcharts.com/modules/exporting.js"></script>
+<script src="https://code.highcharts.com/modules/export-data.js"></script>
+<script src="https://code.highcharts.com/modules/accessibility.js"></script>
+
+
+
+<script>
+
+
+
+var app = angular.module('app', []);
+app.controller('MyController', ['$scope', '$http', '$interval', '$rootScope', function($scope, $http, $interval, $rootScope) {
+	$scope.bgcol ='#FFFFFF';
+	
+	var len = 0;
+	
+	var getbpi = function() {
+		$http.get('https://joinzoe.carto.com/api/v2/sql?q=SELECT%20*%20FROM%20uk_active_cases&api_key=iTsdIq-t8_cElnLjNmoRLA').then(function(result) {
+
+			var src = result.data.rows;
+
+			var caseData = [];
+			var changeData = [];
+			var changeChangeData = [];
+			
+			if (src.length != len) {
+				len = src.length;
+				console.log(new Date());
+			}
+			
+			for (var i=0; i<src.length-2; i++) {
+				
+				date = Date.UTC(src[i].date.toString().substr(0,4), parseInt(src[i].date.toString().substr(4,2))-1, src[i].date.toString().substr(6,2));
+			
+				var arr = [];
+				arr.push(date);
+				arr.push(parseInt(src[i].corrected_covid_positive));
+				caseData.push(arr);
+				if (i > 0) {
+					arr = [];
+					arr.push(date);
+					arr.push(parseInt(src[i].corrected_covid_positive - src[i-1].corrected_covid_positive));
+					changeData.push(arr);
+					if (i > 1) {
+						arr = [];
+						arr.push(date);
+						arr.push(parseInt(changeData[i-1][1] - changeData[i-2][1]));
+						changeChangeData.push(arr);
+										
+					}
+				}
+			}
+			
+			
+Highcharts.setOptions({
+     colors: ['#000000', '#009900', '#993333', '#24CBE5', '#64E572', '#FF9655', '#FFF263',      '#6AF9C4']
+});
+Highcharts.chart('container', {
+    chart: {
+        height: 600,
+        type: 'line'
+    },
+    title: {
+        text: 'ZOE data'
+    },
+
+    plotOptions: {
+        series: {
+            marker: {
+                enabled: true
+            }
+        }
+    },	
+	xAxis: {
+		type: 'datetime',
+		dateTimeLabelFormats: { // don't display the dummy year
+			month: '%e. %b',
+			year: '%b'
+		},
+	},
+    yAxis: [{
+        title: {
+            text: 'Cases',
+            style: {
+                color: Highcharts.getOptions().colors[0]
+            }
+        }
+    },{ // Secondary yAxis
+        title: {
+            text: 'Daily change',
+            style: {
+                color: Highcharts.getOptions().colors[1]
+            }
+        },
+        labels: {
+            style: {
+                color: Highcharts.getOptions().colors[1]
+            }
+        },
+        opposite: true
+    },{ // Tertiary yAxis
+        title: {
+            text: 'Daily change change',
+            style: {
+                color: Highcharts.getOptions().colors[2]
+            }
+        },
+        labels: {
+            style: {
+                color: Highcharts.getOptions().colors[2]
+            }
+        },
+        opposite: true
+    }],
+
+    legend: {
+        layout: 'vertical',
+        align: 'right',
+        verticalAlign: 'middle'
+    },
+
+
+    series: [{
+        name: 'Cases',
+        data: caseData,
+        marker: {
+          symbol: 'circle',
+        }
+    },{
+		name: 'Daily change',
+		yAxis: 1,
+		data: changeData,
+        marker: {
+          symbol: 'triangle',
+        }
+	},{
+		name: 'Daily change change',
+		yAxis: 2,
+		data: changeChangeData,
+        marker: {
+          symbol: 'diamond',
+        }
+	}],
+
+    responsive: {
+        rules: [{
+            condition: {
+                maxWidth: 500
+            },
+            chartOptions: {
+                legend: {
+                    layout: 'horizontal',
+                    align: 'center',
+                    verticalAlign: 'bottom'
+                }
+            }
+        }]
+    }
+
+});
+
+
+		});
+	};
+
+	$interval(function() {
+		getbpi();
+	}, 30000);
+	getbpi();
+}]);
+</script>
+		<style type="text/css">
+.highcharts-figure, .highcharts-data-table table {
+    min-width: 360px; 
+    max-width: 1800px;
+    margin: 1em auto;
+}
+
+.highcharts-data-table table {
+	font-family: Verdana, sans-serif;
+	border-collapse: collapse;
+	border: 1px solid #EBEBEB;
+	margin: 10px auto;
+	text-align: center;
+	width: 100%;
+	max-width: 500px;
+}
+.highcharts-data-table caption {
+    padding: 1em 0;
+    font-size: 1.2em;
+    color: #555;
+}
+.highcharts-data-table th {
+	font-weight: 600;
+    padding: 0.5em;
+}
+.highcharts-data-table td, .highcharts-data-table th, .highcharts-data-table caption {
+    padding: 0.5em;
+}
+.highcharts-data-table thead tr, .highcharts-data-table tr:nth-child(even) {
+    background: #f8f8f8;
+}
+.highcharts-data-table tr:hover {
+    background: #f1f7ff;
+}
+
+		</style>
+
+</head>
+
+<body ng-controller="MyController">
+
+<figure class="highcharts-figure">
+    <div id="container"></div>
+    <p class="highcharts-description">
+<a href="https://covid.joinzoe.com/data">ZOE data</a> showing cases and daily change in cases</p>
+</figure>
+</body>
+</html>
